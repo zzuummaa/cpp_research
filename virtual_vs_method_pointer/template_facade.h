@@ -1,5 +1,7 @@
 #pragma once
 
+#include "test_data.h"
+
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
@@ -59,7 +61,7 @@ struct Manager {
             }
             case Operation::GetTypeName:
             {
-                outStorage.Pointer = const_cast<char*>(typeid(T).name());
+                outStorage.Pointer = const_cast<std::type_info*>(&typeid(T));
                 break;
             }
             case Operation::Move:
@@ -76,11 +78,6 @@ struct Manager {
                 break;
             }
         }
-    }
-
-    static const char* Type()
-    {
-        return typeid(char).name();
     }
 };
 
@@ -120,15 +117,36 @@ struct IntFacade {
         return LocalStorage::AccessData<int>(data);
     }
 
-    const char* Type()
+    const std::type_info& Type()
     {
         StorageData data{};
         Perform(Operation::GetTypeName, Storage, data);
-        return LocalStorage::AccessData<const char*>(data);
+        return *LocalStorage::AccessData<const std::type_info*>(data);
     }
 
 private:
 
     void(*Perform)(Operation aOperation, StorageData& aStorage, StorageData& outStorage);
     StorageData Storage;
+};
+
+template<>
+struct MakeTestData<IntFacade>
+{
+    auto operator()()
+    {
+        std::vector<IntFacade> facades;
+
+        std::srand(RAND_SEED);
+        while (facades.size() < FACADES_COUNT) {
+            int value = std::rand();
+            int type = std::rand() % 3;
+
+            if (type == 0) facades.emplace_back(static_cast<char>(value));
+            if (type == 1) facades.emplace_back(static_cast<int>(value));
+            if (type == 2) facades.emplace_back(static_cast<double>(value));
+        }
+
+        return facades;
+    }
 };
