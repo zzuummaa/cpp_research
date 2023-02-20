@@ -3,6 +3,13 @@
 
 #include <benchmark/benchmark.h>
 
+static void MethodPointerInit(benchmark::State& state) {
+    for (auto _: state) {
+        auto val = IntFacade(static_cast<char>(2));
+        benchmark::DoNotOptimize(val);
+    }
+}
+
 static void MethodPointerGetValue(benchmark::State& state) {
     auto facades = MakeTestData<IntFacade>()();
 
@@ -24,6 +31,13 @@ static void MethodPointerGetType(benchmark::State& state) {
             auto val = &facade.Type();
             benchmark::DoNotOptimize(val);
         }
+    }
+}
+
+static void VirtualMethodInit(benchmark::State& state) {
+    for (auto _: state) {
+        std::unique_ptr<IDIntFacade> val = std::make_unique<DIntFacade<char>>(2);
+        benchmark::DoNotOptimize(val);
     }
 }
 
@@ -51,6 +65,8 @@ static void VirtualMethodGetType(benchmark::State& state) {
     }
 }
 
+BENCHMARK(MethodPointerInit);
+BENCHMARK(VirtualMethodInit);
 BENCHMARK(MethodPointerGetValue);
 BENCHMARK(VirtualMethodGetValue);
 BENCHMARK(MethodPointerGetType);

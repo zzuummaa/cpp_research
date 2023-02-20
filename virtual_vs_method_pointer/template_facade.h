@@ -9,7 +9,7 @@
 enum class Operation
 {
     GetValue,
-    GetTypeName,
+    GetType,
     Move,
     Deinit
 };
@@ -23,19 +23,45 @@ union StorageData
 struct LocalStorage
 {
     template<typename T>
-    static T& AccessData(StorageData& aData)
+    static void Init(StorageData& aData, T aValue)
+    {
+        auto* p = &Access<T>(aData);
+        new (p)T(aValue);
+    }
+
+    template<typename T>
+    static T& Access(StorageData& aData)
     {
         void* p = static_cast<void*>(&aData.Value[0]);
         return *static_cast<T*>(p);
+    }
+
+    template<typename T>
+    static void Deinit(StorageData& aData)
+    {
+        auto& value = Access<T>(aData);
+        value.~T();
     }
 };
 
 struct DynamicStorage
 {
     template<typename T>
-    static T& AccessData(StorageData& aData)
+    static void Init(StorageData& aData, T aValue)
+    {
+        aData.Pointer = new T(aValue);
+    }
+
+    template<typename T>
+    static T& Access(StorageData& aData)
     {
         return *static_cast<T>(aData.Pointer);
+    }
+
+    template<typename T>
+    static void Deinit(StorageData& aData)
+    {
+        delete static_cast<T*>(aData.Pointer);
     }
 };
 
@@ -54,27 +80,26 @@ struct Manager {
         {
             case Operation::GetValue:
             {
-                auto& value = TStorage::template AccessData<T>(aStorage);
-                auto& outValue = LocalStorage::AccessData<int>(outStorage);
+                auto& value = TStorage::template Access<T>(aStorage);
+                auto& outValue = LocalStorage::Access<int>(outStorage);
                 outValue = static_cast<int>(value);
                 break;
             }
-            case Operation::GetTypeName:
+            case Operation::GetType:
             {
                 outStorage.Pointer = const_cast<std::type_info*>(&typeid(T));
                 break;
             }
             case Operation::Move:
             {
-                auto& value = TStorage::template AccessData<T>(aStorage);
-                auto& outValue = TStorage::template AccessData<T>(outStorage);
+                auto& value = TStorage::template Access<T>(aStorage);
+                auto& outValue = TStorage::template Access<T>(outStorage);
                 new (&outValue)T(std::move(value));
                 break;
             }
             case Operation::Deinit:
             {
-                auto& value = TStorage::template AccessData<T>(aStorage);
-                value.~T();
+                TStorage::template Deinit<T>(aStorage);
                 break;
             }
         }
@@ -88,14 +113,12 @@ struct IntFacade {
         using TStorage = typename Manager<T>::TStorage;
 
         Perform = Manager<T>::Perform;
-
-        T* p = &TStorage::template AccessData<T>(Storage);
-        new (p)T(aValue);
+        TStorage::template Init<T>(Storage, aValue);
     }
 
     IntFacade(const IntFacade&) = delete;
 
-    explicit IntFacade(IntFacade&& aOther) : Perform(nullptr)
+    IntFacade(IntFacade&& aOther) : Perform(nullptr), Storage()
     {
         aOther.Perform(Operation::Move, aOther.Storage, Storage);
         std::swap(Perform, aOther.Perform);
@@ -114,14 +137,14 @@ struct IntFacade {
     {
         StorageData data{};
         Perform(Operation::GetValue, Storage, data);
-        return LocalStorage::AccessData<int>(data);
+        return LocalStorage::Access<int>(data);
     }
 
     const std::type_info& Type()
     {
         StorageData data{};
-        Perform(Operation::GetTypeName, Storage, data);
-        return *LocalStorage::AccessData<const std::type_info*>(data);
+        Perform(Operation::GetType, Storage, data);
+        return *static_cast<std::type_info*>(data.Pointer);
     }
 
 private:

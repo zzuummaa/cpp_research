@@ -1,7 +1,7 @@
-2023-02-20T16:33:58-00:00
+2023-02-20T17:38:33-00:00
 Running C:\Users\Stepan\CLionProjects\cpp_research\cmake-build-release\virtual_vs_method_pointer\virtual_vs_method_point
 er.exe
-Run on (12 X 2224.5 MHz CPU s)
+Run on (12 X 2221.85 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x6)
   L1 Instruction 32 KiB (x6)
@@ -10,7 +10,9 @@ CPU Caches:
 ----------------------------------------------------------------
 Benchmark                      Time             CPU   Iterations
 ----------------------------------------------------------------
-MethodPointerGetValue        170 ns          167 ns      3733333
-VirtualMethodGetValue        135 ns          136 ns      4480000
-MethodPointerGetType         307 ns          305 ns      2357895
-VirtualMethodGetType         176 ns          176 ns      3733333
+MethodPointerInit           1.68 ns         1.67 ns    448000000
+VirtualMethodInit           53.6 ns         54.7 ns     10000000
+MethodPointerGetValue        200 ns          199 ns      3446154
+VirtualMethodGetValue        145 ns          142 ns      4072727
+MethodPointerGetType         246 ns          246 ns      2800000
+VirtualMethodGetType         144 ns          144 ns      4977778
