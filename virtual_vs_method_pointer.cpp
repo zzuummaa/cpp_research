@@ -138,8 +138,8 @@ static void MethodPointer(benchmark::State& state) {
     for (auto _: state) {
         for (auto& facade : facades)
         {
-            const char* name = facade.Type();
-            benchmark::DoNotOptimize(name);
+            auto val = facade.Type();
+            benchmark::DoNotOptimize(val);
         }
     }
 }
@@ -187,7 +187,7 @@ static void VirtualMethod(benchmark::State& state) {
     for (auto _: state) {
         for (auto& facade : facades)
         {
-            auto* val = facade->Type();
+            auto val = facade->Type();
             benchmark::DoNotOptimize(val);
         }
     }
