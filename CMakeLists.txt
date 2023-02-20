@@ -15,8 +15,4 @@ add_executable(polymorphic_containers polymorphic_containers.cpp)
 
 add_executable(template_param_type template_param_type.cpp)
 
-add_executable(virtual_methods virtual_methods.cpp)
-
-add_executable(virtual_vs_method_pointer virtual_vs_method_pointer.cpp)
-target_link_libraries(virtual_vs_method_pointer benchmark::benchmark)
-set_target_properties(virtual_vs_method_pointer PROPERTIES COMPILE_FLAGS "-save-temps")
+add_subdirectory(virtual_vs_method_pointer)

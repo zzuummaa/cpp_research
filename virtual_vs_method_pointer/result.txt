@@ -1,0 +1,14 @@
+2023-02-20T16:05:11-00:00
+Running C:\Users\Stepan\CLionProjects\cpp_research\cmake-build-release\virtual_vs_method_pointer\virtual_vs_method_point
+er.exe
+Run on (12 X 2232.47 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 256 KiB (x6)
+  L3 Unified 9216 KiB (x1)
+--------------------------------------------------------
+Benchmark              Time             CPU   Iterations
+--------------------------------------------------------
+MethodPointer        311 ns          308 ns      2181565
+VirtualMethod        187 ns          188 ns      3733333

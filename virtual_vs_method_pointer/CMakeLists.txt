@@ -1,0 +1,3 @@
+add_executable(virtual_vs_method_pointer virtual_vs_method_pointer.cpp)
+target_link_libraries(virtual_vs_method_pointer benchmark::benchmark)
+set_target_properties(virtual_vs_method_pointer PROPERTIES COMPILE_FLAGS "-save-temps")
