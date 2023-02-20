@@ -7,13 +7,75 @@
 constexpr size_t FACADES_COUNT = 100;
 const std::time_t RAND_SEED = std::time(nullptr);
 
-template<typename T>
-struct Holder {
-    T Value;
+enum class Operation
+{
+    GetValue,
+    GetTypeInfo,
+    Deinit
+};
 
-    static int GetInt(void* aData) {
-        auto* holder = static_cast<Holder*>(aData);
-        return holder->Value;
+union Data
+{
+    const char* TypeName;
+    int Value;
+};
+
+union StorageData
+{
+    char Value[sizeof(void*)];
+    void* Pointer;
+};
+
+struct LocalStorage
+{
+    template<typename T>
+    static T& AccessData(StorageData& aData)
+    {
+        void* p = static_cast<void*>(&aData.Value[0]);
+        return *static_cast<T*>(p);
+    }
+};
+
+struct DynamicStorage
+{
+    template<typename T>
+    static T& AccessData(StorageData& aData)
+    {
+        return *static_cast<T>(aData.Pointer);
+    }
+};
+
+template<typename T>
+struct Manager {
+    static constexpr bool IsLocalStorage = sizeof(T) <= sizeof(StorageData);
+
+    using TStorage = std::conditional_t<
+        IsLocalStorage,
+        LocalStorage,
+        DynamicStorage>;
+
+    static void Perform(Operation aOperation, StorageData& aStorage, Data* outData)
+    {
+        switch (aOperation)
+        {
+            case Operation::GetValue:
+            {
+                auto& value = TStorage::template AccessData<T>(aStorage);
+                outData->Value = static_cast<int>(value);
+                break;
+            }
+            case Operation::GetTypeInfo:
+            {
+                outData->TypeName = typeid(T).name();
+                break;
+            }
+            case Operation::Deinit:
+            {
+                auto& value = TStorage::template AccessData<T>(aStorage);
+                value.~T();
+                break;
+            }
+        }
     }
 
     static const char* Type()
@@ -24,33 +86,40 @@ struct Holder {
 
 struct IntFacade {
     template<typename T>
-    IntFacade(const T& aValue) {
-        static_assert(sizeof(Holder<T>) <= sizeof(data));
+    IntFacade(const T& aValue)
+    {
+        using TStorage = typename Manager<T>::TStorage;
 
-        auto* holder = static_cast<Holder<T>*>(AccessData());
-        holder->Value = aValue;
-        GetInt = Holder<T>::GetInt;
-        GetType = Holder<T>::Type;
+        Perform = Manager<T>::Perform;
+
+        T* p = &TStorage::template AccessData<T>(Storage);
+        new (p)T(aValue);
     }
 
-    int Get() {
-        return GetInt(AccessData());
+    ~IntFacade()
+    {
+        Data data{};
+        Perform(Operation::Deinit, Storage, &data);
+    }
+
+    int Get()
+    {
+        Data data{};
+        Perform(Operation::GetValue, Storage, &data);
+        return data.Value;
     }
 
     const char* Type()
     {
-        return GetType();
+        Data data{};
+        Perform(Operation::GetTypeInfo, Storage, &data);
+        return data.TypeName;
     }
 
 private:
-    char data[16];
 
-    int (* GetInt)(void*);
-    const char* (* GetType)();
-
-    void* AccessData() {
-        return &data[0];
-    }
+    void(*Perform)(Operation aOperation, StorageData& aStorage, Data* outData);
+    StorageData Storage;
 };
 
 static void MethodPointer(benchmark::State& state) {
@@ -69,8 +138,8 @@ static void MethodPointer(benchmark::State& state) {
     for (auto _: state) {
         for (auto& facade : facades)
         {
-            auto* val = facade.Type();
-            benchmark::DoNotOptimize(val);
+            const char* name = facade.Type();
+            benchmark::DoNotOptimize(name);
         }
     }
 }
