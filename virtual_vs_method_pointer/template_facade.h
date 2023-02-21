@@ -14,7 +14,7 @@ enum class Operation
     Deinit
 };
 
-union StorageData
+union AnyData
 {
     char Value[sizeof(void*)];
     void* Pointer;
@@ -23,21 +23,21 @@ union StorageData
 struct LocalStorage
 {
     template<typename T>
-    static void Init(StorageData& aData, T aValue)
+    static void Init(AnyData& aData, const T& aValue)
     {
         auto* p = &Access<T>(aData);
         new (p)T(aValue);
     }
 
     template<typename T>
-    static T& Access(StorageData& aData)
+    static T& Access(AnyData& aData)
     {
-        void* p = static_cast<void*>(&aData.Value[0]);
+        void* p = &aData.Value[0];
         return *static_cast<T*>(p);
     }
 
     template<typename T>
-    static void Deinit(StorageData& aData)
+    static void Deinit(AnyData& aData)
     {
         auto& value = Access<T>(aData);
         value.~T();
@@ -47,19 +47,19 @@ struct LocalStorage
 struct DynamicStorage
 {
     template<typename T>
-    static void Init(StorageData& aData, T aValue)
+    static void Init(AnyData& aData, const T& aValue)
     {
         aData.Pointer = new T(aValue);
     }
 
     template<typename T>
-    static T& Access(StorageData& aData)
+    static T& Access(AnyData& aData)
     {
         return *static_cast<T>(aData.Pointer);
     }
 
     template<typename T>
-    static void Deinit(StorageData& aData)
+    static void Deinit(AnyData& aData)
     {
         delete static_cast<T*>(aData.Pointer);
     }
@@ -67,14 +67,14 @@ struct DynamicStorage
 
 template<typename T>
 struct Manager {
-    static constexpr bool IsLocalStorage = sizeof(T) <= sizeof(StorageData);
+    static constexpr bool IsLocalStorage = sizeof(T) <= sizeof(AnyData);
 
     using TStorage = std::conditional_t<
         IsLocalStorage,
         LocalStorage,
         DynamicStorage>;
 
-    static void Perform(Operation aOperation, StorageData& aStorage, StorageData& outStorage)
+    static void Perform(Operation aOperation, AnyData& aStorage, AnyData& outStorage)
     {
         switch (aOperation)
         {
@@ -106,51 +106,53 @@ struct Manager {
     }
 };
 
-struct IntFacade {
+struct IntFacade
+{
     template<typename T>
-    explicit IntFacade(const T& aValue) : Storage()
+    explicit IntFacade(const T& aValue) : mStorage()
     {
         using TStorage = typename Manager<T>::TStorage;
 
-        Perform = Manager<T>::Perform;
-        TStorage::template Init<T>(Storage, aValue);
+        mManager = Manager<T>::Perform;
+        TStorage::template Init<T>(mStorage, aValue);
     }
 
     IntFacade(const IntFacade&) = delete;
 
-    IntFacade(IntFacade&& aOther) : Perform(nullptr), Storage()
+    IntFacade(IntFacade&& aOther) : mManager(nullptr), mStorage()
     {
-        aOther.Perform(Operation::Move, aOther.Storage, Storage);
-        std::swap(Perform, aOther.Perform);
+        aOther.mManager(Operation::Move, aOther.mStorage, mStorage);
+        std::swap(mManager, aOther.mManager);
     }
 
     ~IntFacade()
     {
-        if (Perform)
+        if (mManager)
         {
-            StorageData data{};
-            Perform(Operation::Deinit, Storage, data);
+            AnyData data{};
+            mManager(Operation::Deinit, mStorage, data);
         }
     }
 
     int Get()
     {
-        StorageData data{};
-        Perform(Operation::GetValue, Storage, data);
+        AnyData data{};
+        mManager(Operation::GetValue, mStorage, data);
         return LocalStorage::Access<int>(data);
     }
 
     const std::type_info& Type()
     {
-        StorageData data{};
-        Perform(Operation::GetType, Storage, data);
+        AnyData data{};
+        mManager(Operation::GetType, mStorage, data);
         return *static_cast<std::type_info*>(data.Pointer);
     }
 
 private:
+    using TManager = void(*)(Operation aOperation, AnyData& aStorage, AnyData& outStorage);
 
-    void(*Perform)(Operation aOperation, StorageData& aStorage, StorageData& outStorage);
-    StorageData Storage;
+    TManager mManager;
+    AnyData mStorage;
 };
 
 template<>

@@ -13,9 +13,10 @@ struct IDIntFacade {
 
 template<typename T>
 struct DIntFacade : public IDIntFacade {
-    DIntFacade(const T& aValue) : mValue(aValue) {}
+    explicit DIntFacade(const T& aValue) : mValue(aValue) {}
 
-    int Get() override {
+    int Get() override
+    {
         return mValue;
     }
 

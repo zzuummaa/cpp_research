@@ -28,8 +28,9 @@ static void MethodPointerGetType(benchmark::State& state) {
     for (auto _: state) {
         for (auto& facade : facades)
         {
-            auto val = &facade.Type();
-            benchmark::DoNotOptimize(val);
+            const auto& val = &facade.Type();
+            const char* name = val->name();
+            benchmark::DoNotOptimize(name);
         }
     }
 }
@@ -59,8 +60,9 @@ static void VirtualMethodGetType(benchmark::State& state) {
     for (auto _: state) {
         for (auto& facade : facades)
         {
-            auto val = &facade->Type();
-            benchmark::DoNotOptimize(val);
+            const auto& val = facade->Type();
+            const char* name = val.name();
+            benchmark::DoNotOptimize(name);
         }
     }
 }
